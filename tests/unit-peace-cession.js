@@ -1,0 +1,10 @@
+'use strict';
+const assert=require('node:assert/strict'),{BattleRoom}=require('../server/Room');
+const r=new BattleRoom(),fx=[];for(const k of ['setSimulationInterval','onMessage','lock','disconnect','setMetadata'])r[k]=()=>{};r.broadcast=(type,m)=>fx.push(m);
+r.onCreate({code:'123456'});for(let i=0;i<3;i++)r.onJoin({sessionId:'s'+i},{clientId:'c'+i,name:'P'+i,leader:'sun'});r.handleStart({sessionId:'s0'},{map:'island'});
+r.state.regionCount=4;r.regionNeighbors=[[1],[0,2],[1,3],[2]];for(let i=0;i<r.state.regions.length;i++)r.state.regions[i].owner=i<4?[0,1,1,2][i]:-1;
+r.state.regions[2].isBarrack=true;r.updateAdjacency();assert.equal(r.getRelation(0,2).adjacent,false);
+r.launchBattle(0,2);r.state.battles[0].progress=40;const rel=r.getRelation(0,1);rel.state='war';rel.pending='peace';rel.pendingFrom=1;
+r.handleRespond({sessionId:'s0'},{to:1,accept:true});
+assert.equal(r.state.regions[2].owner,0);assert.equal(r.state.regions[2].isBarrack,false,'cession must go through successful conquest');assert(r.wasOwnedBy(2,0),'recapture history');assert.equal(r.getRelation(0,2).adjacent,true);assert(fx.some(m=>m.kind==='conquer'&&m.region===2));assert(!fx.some(m=>m.kind==='battleLost'&&m.region===2));
+console.log('PEACE-CESSION-OK');process.exit(0);

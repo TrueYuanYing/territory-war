@@ -1,0 +1,12 @@
+**/node_modules
+**/.git
+**/.config
+**/.env*
+sshkeys
+tmp
+output
+tools
+tests
+docs
+licenses
+*.log

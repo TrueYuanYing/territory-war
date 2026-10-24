@@ -1,0 +1,12 @@
+# Render 免费托管配置（蓝本）：把仓库推到 GitHub 后在 Render 新建 Blueprint 即可
+# 免费额度：512MB 内存 Web Service，15 分钟无访问自动休眠（下次访问冷启动约 1 分钟）
+services:
+  - type: web
+    name: territory-war
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    plan: free
+    autoDeploy: true

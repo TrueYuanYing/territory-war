@@ -1,0 +1,6 @@
+# Preserve authored bytes: /version hashes source contents across platforms.
+* -text
+*.png binary
+*.webp binary
+*.ttf binary
+*.woff2 binary

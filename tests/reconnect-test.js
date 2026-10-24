@@ -1,0 +1,34 @@
+'use strict';
+// 通过真实 WebSocket 验证：已开局房间断线后恢复同一席位、领地和房间。
+const assert = require('node:assert/strict');
+const { Client } = require('../server/node_modules/colyseus.js');
+const base = process.argv[2] || 'ws://127.0.0.1:8080';
+const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+const timeout = setTimeout(() => { console.error('RECONNECT-FAIL: timeout'); process.exit(1); }, 20000);
+(async () => {
+  const client = new Client(base);
+  let room = await client.create('battle_code', { name:'重连回归', clientId:'reconnect-'+Date.now(), color:'#3498db', leader:'sun', code:String(100000+Math.floor(Math.random()*900000)) });
+  room.onMessage('fx', () => {});
+  await pause(250); room.send('addAI', { difficulty:'easy' }); await pause(250);
+  room.send('start', { map:'mega' }); await pause(500);
+  const roomId = room.roomId, sessionId = room.sessionId, token = room.reconnectionToken;
+  const me = [...room.state.players.values()].find(p => p.sessionId === sessionId);
+  assert.equal(room.state.phase, 'playing');
+  const playerId = me.id, owned = [...room.state.regions].map((r,i) => r.owner === playerId ? i : -1).filter(i => i >= 0);
+  assert(owned.length > 0);
+  const departed = new Promise(resolve => room.onLeave(resolve));
+  room.connection.transport.ws.close(4001);
+  await departed; await pause(300);
+  room = await client.reconnect(token);
+  room.onMessage('fx', () => {});
+  await pause(350);
+  const restored = [...room.state.players.values()].find(p => p.sessionId === room.sessionId);
+  assert.equal(room.roomId, roomId);
+  assert.equal(room.sessionId, sessionId);
+  assert.equal(restored.id, playerId);
+  assert.equal(room.state.phase, 'playing');
+  assert.equal(restored.isHuman, true);
+  assert(owned.some(i => room.state.regions[i].owner === playerId));
+  console.log('RECONNECT-OK: same room, seat and territories restored');
+  await room.leave(); clearTimeout(timeout); process.exit(0);
+})().catch(error => { console.error('RECONNECT-FAIL:', error.message || error); clearTimeout(timeout); process.exit(1); });
